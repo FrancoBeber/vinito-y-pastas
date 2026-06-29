@@ -109,6 +109,12 @@ const MOCK_PRODUCTS = [
   }
 ];
 
+const getImageUrl = (url) => {
+  if (!url) return '';
+  const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
+  return `${import.meta.env.BASE_URL || '/'}${cleanUrl}`;
+};
+
 function App() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -217,7 +223,7 @@ function App() {
       {/* Header */}
       <header className="app-header">
         <div className="logo-block">
-          <img src="/images/logo.webp" alt="Vinito y Pastas Logo" className="logo-img" />
+          <img src={getImageUrl('images/logo.webp')} alt="Vinito y Pastas Logo" className="logo-img" />
           <div className="logo-text">
             <h1>VINITO <span>y</span> PASTAS</h1>
             <div className="logo-subtitle">Vinos Gourmet</div>
@@ -244,7 +250,7 @@ function App() {
       </header>
 
       {/* Cover / Hero Banner */}
-      <section className="cover-section">
+      <section className="cover-section" style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${getImageUrl('images/cover.webp')})` }}>
         <div className="cover-content">
           <h2>Vinos Seleccionados.<br />Momentos Inolvidables.</h2>
           <p>Descubrí nuestra selección de vinos gourmet de las mejores bodegas de Argentina.</p>
@@ -380,7 +386,7 @@ function App() {
                 <article key={product.id} className="wine-card">
                   <div className="wine-card-image">
                     <span className="wine-category-tag">{product.category_name}</span>
-                    <img src={product.image_url} alt={product.name} />
+                    <img src={getImageUrl(product.image_url)} alt={product.name} />
                   </div>
                   <div className="wine-info">
                     <span className="wine-winery">{product.winery}</span>

@@ -147,8 +147,9 @@ body {
 .cover-section {
   position: relative;
   height: 380px;
-  background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('/images/cover.webp') no-repeat center center;
   background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
   display: flex;
   align-items: center;
   padding: 0 8%;
@@ -225,9 +226,9 @@ body {
 .catalog-container {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 2rem;
-  padding: 0 5% 4rem;
-  max-width: 1400px;
+  gap: 2.5rem;
+  padding: 0 2% 4rem;
+  max-width: 96%;
   margin: 0 auto;
 }
 
@@ -370,6 +371,7 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 2rem;
+  justify-content: center;
 }
 
 /* Product Card */
