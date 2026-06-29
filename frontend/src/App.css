@@ -510,12 +510,86 @@ body {
 .features-bar {
   background-color: var(--color-primary);
   color: #faf6f0;
-  padding: 2.5rem 5%;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  padding: 2.5rem 5% 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 2rem;
   margin-top: 4rem;
   border-top: 3px solid var(--color-accent);
+}
+
+.features-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2rem;
+  width: 100%;
+}
+
+/* Footer Social Icons */
+.footer-social {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  width: 100%;
+  padding-top: 1.5rem;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #faf6f0;
+  transition: var(--transition);
+}
+
+.social-link:hover {
+  background: var(--color-accent);
+  color: #fff;
+  transform: translateY(-3px);
+  box-shadow: 0 4px 15px rgba(184, 115, 51, 0.4);
+}
+
+/* Footer Copyright */
+.footer-copy {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #dfd5d8;
+  padding-top: 0.5rem;
+}
+
+/* Floating WhatsApp Button */
+.whatsapp-float {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #25d366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(37, 211, 102, 0.45);
+  z-index: 9999;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: whatsapp-pulse 2s infinite;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px rgba(37, 211, 102, 0.6);
+}
+
+@keyframes whatsapp-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(37, 211, 102, 0.45); }
+  50% { box-shadow: 0 4px 30px rgba(37, 211, 102, 0.7); }
 }
 
 .feature-item {
@@ -672,9 +746,19 @@ body {
     height: 200px;
   }
 
-  .features-bar {
+  .features-row {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+
+  .features-bar {
     padding: 1.5rem 5%;
+  }
+
+  .whatsapp-float {
+    bottom: 18px;
+    right: 18px;
+    width: 54px;
+    height: 54px;
   }
 }
