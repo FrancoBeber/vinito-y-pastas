@@ -78,10 +78,9 @@ function AuthPage({ onLogin, onBack }) {
 
       const data = await res.json();
       onLogin(data.user);
-    } catch {
-      // Backend offline – simulate login
-      console.warn('Backend offline, simulando inicio de sesión.');
-      onLogin({ name: loginEmail.split('@')[0], email: loginEmail });
+    } catch (err) {
+      console.error('Error de conexión:', err);
+      setErrors({ form: 'No se pudo conectar con el servidor de autenticación. Asegúrate de tener el backend encendido.' });
     } finally {
       setLoading(false);
     }
@@ -113,10 +112,9 @@ function AuthPage({ onLogin, onBack }) {
 
       const data = await res.json();
       onLogin(data.user);
-    } catch {
-      // Backend offline – simulate registration
-      console.warn('Backend offline, simulando registro.');
-      onLogin({ name: regName, email: regEmail });
+    } catch (err) {
+      console.error('Error de conexión:', err);
+      setErrors({ form: 'No se pudo conectar con el servidor de autenticación. Asegúrate de tener el backend encendido.' });
     } finally {
       setLoading(false);
     }
