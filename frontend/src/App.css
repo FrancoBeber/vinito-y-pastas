@@ -301,6 +301,118 @@ body {
   border-radius: 50%;
 }
 
+.user-greeting {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.user-name-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* User Profile Dropdown Menu */
+.user-profile-container {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 240px;
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(74, 21, 33, 0.12);
+  z-index: 1000;
+  overflow: hidden;
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.profile-dropdown-header {
+  padding: 1rem 1.2rem;
+  background-color: rgba(74, 21, 33, 0.02);
+}
+
+.profile-user-name {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.profile-user-email {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
+}
+
+.profile-guest-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.profile-dropdown-divider {
+  height: 1px;
+  background-color: var(--color-border);
+}
+
+.profile-dropdown-list {
+  list-style: none;
+  padding: 0.4rem 0;
+  margin: 0;
+}
+
+.profile-dropdown-list li a {
+  display: block;
+  padding: 0.65rem 1.2rem;
+  color: var(--color-text-main);
+  text-decoration: none;
+  font-size: 0.88rem;
+  transition: var(--transition);
+}
+
+.profile-dropdown-list li a:hover {
+  background-color: rgba(74, 21, 33, 0.05);
+  color: var(--color-primary);
+  padding-left: 1.4rem;
+}
+
+.profile-dropdown-list li a.profile-logout-btn {
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.profile-dropdown-list li a.profile-logout-btn:hover {
+  background-color: rgba(192, 57, 43, 0.04);
+}
+
+.profile-dropdown-list li a.profile-login-btn {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
 /* Cover / Hero Banner */
 .cover-section {
   position: relative;

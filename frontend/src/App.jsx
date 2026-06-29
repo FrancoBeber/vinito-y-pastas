@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import AuthPage from './components/AuthPage';
 
 const MOCK_CATEGORIES = [
   { id: 1, name: 'Tinto' },
@@ -116,6 +117,15 @@ const getImageUrl = (url) => {
 };
 
 function App() {
+  // Auth state
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('vyp_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [currentView, setCurrentView] = useState('store');
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [wineries, setWineries] = useState([]);
@@ -130,8 +140,25 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [cartCount, setCartCount] = useState(0);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [vinosOpen, setVinosOpen] = useState(true);
+  const [cuentaOpen, setCuentaOpen] = useState(true);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    sessionStorage.setItem('vyp_user', JSON.stringify(userData));
+    setCurrentView('store');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    sessionStorage.removeItem('vyp_user');
+    setSidebarOpen(false);
+  };
+
   // Fetch categories and wineries once on mount
   useEffect(() => {
+    if (currentView === 'auth') return;
     const fetchMetadata = async () => {
       try {
         const catRes = await fetch('http://localhost:5000/api/categories');
@@ -150,10 +177,11 @@ function App() {
       }
     };
     fetchMetadata();
-  }, []);
+  }, [currentView]);
 
   // Fetch filtered products when filters change
   useEffect(() => {
+    if (currentView === 'auth') return;
     const fetchProducts = async () => {
       setLoading(true);
       try {
@@ -202,7 +230,7 @@ function App() {
     }, 300);
 
     return () => clearTimeout(delayDebounce);
-  }, [search, selectedCategory, selectedWinery, minPrice, maxPrice]);
+  }, [search, selectedCategory, selectedWinery, minPrice, maxPrice, currentView]);
 
   const handleClearFilters = () => {
     setSearch('');
@@ -217,9 +245,23 @@ function App() {
     alert(`¡"${product.name}" agregado al carrito! (Simulación)`);
   };
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [vinosOpen, setVinosOpen] = useState(true);
-  const [cuentaOpen, setCuentaOpen] = useState(true);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (profileDropdownOpen && !e.target.closest('.user-profile-container')) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [profileDropdownOpen]);
+
+  // If view is auth, render the auth page
+  if (currentView === 'auth') {
+    return <AuthPage onLogin={handleLogin} onBack={() => setCurrentView('store')} />;
+  }
 
   return (
     <div className="app-container">
@@ -290,7 +332,15 @@ function App() {
                 <li><a href="#pedidos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis pedidos</a></li>
                 <li><a href="#direcciones" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis direcciones</a></li>
                 <li><a href="#misfavoritos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis favoritos</a></li>
-                <li><a href="#logout" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Cerrar sesión</a></li>
+                {user ? (
+                  <li><a href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Cerrar sesión</a></li>
+                ) : (
+                  <li>
+                    <a href="#login" onClick={(e) => { e.preventDefault(); setCurrentView('auth'); setSidebarOpen(false); }}>
+                      Iniciar sesión / Registrarse
+                    </a>
+                  </li>
+                )}
               </ul>
             )}
           </li>
@@ -314,13 +364,55 @@ function App() {
         </div>
         <div className="header-actions">
           <button className="header-icon-btn" aria-label="Buscar" onClick={() => alert("Usa el panel de búsqueda lateral")}>🔍</button>
-          <button className="header-icon-btn" aria-label="Mi Perfil" onClick={() => setSidebarOpen(true)}>👤</button>
+          
+          {/* Dropdown Container */}
+          <div className="user-profile-container">
+            <button className="header-icon-btn user-greeting" aria-label="Mi Perfil" onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}>
+              👤 {user && <span className="user-name-badge">{user.name?.split(' ')[0]}</span>}
+            </button>
+            {profileDropdownOpen && (
+              <div className="profile-dropdown-menu">
+                <div className="profile-dropdown-header">
+                  {user ? (
+                    <>
+                      <div className="profile-user-name">{user.name}</div>
+                      <div className="profile-user-email">{user.email}</div>
+                    </>
+                  ) : (
+                    <div className="profile-guest-title">Invitado</div>
+                  )}
+                </div>
+                <div className="profile-dropdown-divider" />
+                <ul className="profile-dropdown-list">
+                  <li><a href="#pedidos" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); alert('¡Próximamente!'); }}>Mis pedidos</a></li>
+                  <li><a href="#direcciones" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); alert('¡Próximamente!'); }}>Mis direcciones</a></li>
+                  <li><a href="#misfavoritos" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); alert('¡Próximamente!'); }}>Mis favoritos</a></li>
+                  <div className="profile-dropdown-divider" />
+                  {user ? (
+                    <li>
+                      <a href="#logout" className="profile-logout-btn" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); handleLogout(); }}>
+                        Cerrar sesión
+                      </a>
+                    </li>
+                  ) : (
+                    <li>
+                      <a href="#login" className="profile-login-btn" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); setCurrentView('auth'); }}>
+                        Iniciar sesión / Registrarse
+                      </a>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+
           <button className="header-icon-btn cart-indicator" aria-label="Ver carrito">
             🛒
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </button>
         </div>
       </header>
+
 
       {/* Cover / Hero Banner */}
       <section className="cover-section" style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${getImageUrl('images/cover.webp')})` }}>
