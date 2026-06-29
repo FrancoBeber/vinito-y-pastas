@@ -217,31 +217,104 @@ function App() {
     alert(`¡"${product.name}" agregado al carrito! (Simulación)`);
   };
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [vinosOpen, setVinosOpen] = useState(true);
+  const [cuentaOpen, setCuentaOpen] = useState(true);
 
   return (
     <div className="app-container">
-      {/* Header */}
+      {/* Sidebar Overlay */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+
+      {/* Sidebar Navigation */}
+      <nav className={`sidebar-nav ${sidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <img src={getImageUrl('images/logo.webp')} alt="Logo" className="sidebar-logo" />
+          <span className="sidebar-brand">Vinito y Pastas</span>
+          <button className="sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú">✕</button>
+        </div>
+
+        <ul className="sidebar-menu">
+          <li className="sidebar-item">
+            <a href="#inicio" onClick={(e) => { e.preventDefault(); setSidebarOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+              <span className="sidebar-icon">🏠</span>Inicio
+            </a>
+          </li>
+
+          <li className="sidebar-item has-submenu">
+            <a href="#vinos" onClick={(e) => { e.preventDefault(); setVinosOpen(!vinosOpen); }}>
+              <span className="sidebar-icon">🍷</span>Vinos
+              <span className={`submenu-arrow ${vinosOpen ? 'open' : ''}`}>›</span>
+            </a>
+            {vinosOpen && (
+              <ul className="sidebar-submenu">
+                <li><a href="#tintos" onClick={(e) => { e.preventDefault(); setSelectedCategory('4'); setSidebarOpen(false); }}>Tintos</a></li>
+                <li><a href="#blancos" onClick={(e) => { e.preventDefault(); setSelectedCategory('2'); setSidebarOpen(false); }}>Blancos</a></li>
+                <li><a href="#rosados" onClick={(e) => { e.preventDefault(); setSelectedCategory('3'); setSidebarOpen(false); }}>Rosados</a></li>
+                <li><a href="#espumantes" onClick={(e) => { e.preventDefault(); setSelectedCategory('1'); setSidebarOpen(false); }}>Espumantes</a></li>
+              </ul>
+            )}
+          </li>
+
+          <li className="sidebar-item">
+            <a href="#bodegas" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>
+              <span className="sidebar-icon">🏛️</span>Bodegas
+            </a>
+          </li>
+
+          <li className="sidebar-item">
+            <a href="#combos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>
+              <span className="sidebar-icon">🎁</span>Combos y Regalos
+            </a>
+          </li>
+
+          <li className="sidebar-item">
+            <a href="#ofertas" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>
+              <span className="sidebar-icon">🏷️</span>Ofertas
+            </a>
+          </li>
+
+          <li className="sidebar-item">
+            <a href="#favoritos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>
+              <span className="sidebar-icon">❤️</span>Favoritos
+            </a>
+          </li>
+
+          <li className="sidebar-item has-submenu">
+            <a href="#cuenta" onClick={(e) => { e.preventDefault(); setCuentaOpen(!cuentaOpen); }}>
+              <span className="sidebar-icon">👤</span>Mi Cuenta
+              <span className={`submenu-arrow ${cuentaOpen ? 'open' : ''}`}>›</span>
+            </a>
+            {cuentaOpen && (
+              <ul className="sidebar-submenu">
+                <li><a href="#pedidos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis pedidos</a></li>
+                <li><a href="#direcciones" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis direcciones</a></li>
+                <li><a href="#misfavoritos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis favoritos</a></li>
+                <li><a href="#logout" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Cerrar sesión</a></li>
+              </ul>
+            )}
+          </li>
+        </ul>
+      </nav>
+
+      {/* Top Header Bar */}
       <header className="app-header">
-        <div className="logo-block">
-          <img src={getImageUrl('images/logo.webp')} alt="Vinito y Pastas Logo" className="logo-img" />
-          <div className="logo-text">
-            <h1>VINITO <span>y</span> PASTAS</h1>
-            <div className="logo-subtitle">Vinos Gourmet</div>
-            <div className="logo-slogan">Brindemos por los pequeños grandes momentos</div>
+        <div className="header-left">
+          <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú">
+            <span></span><span></span><span></span>
+          </button>
+          <div className="logo-block">
+            <img src={getImageUrl('images/logo.webp')} alt="Vinito y Pastas Logo" className="logo-img" />
+            <div className="logo-text">
+              <h1>VINITO <span>y</span> PASTAS</h1>
+              <div className="logo-subtitle">Vinos Gourmet</div>
+              <div className="logo-slogan">Brindemos por los pequeños grandes momentos</div>
+            </div>
           </div>
         </div>
-        <nav>
-          <ul className="nav-links">
-            <li><a href="#inicio" onClick={(e) => e.preventDefault()}>Inicio</a></li>
-            <li><a href="#catalog" className="active">Vinos</a></li>
-            <li><a href="#about" onClick={(e) => { e.preventDefault(); alert("¡Próximamente más secciones!"); }}>Sobre Nosotros</a></li>
-            <li><a href="#experiencias" onClick={(e) => { e.preventDefault(); alert("¡Próximamente más secciones!"); }}>Experiencias</a></li>
-            <li><a href="#contact" onClick={(e) => { e.preventDefault(); alert("¡Próximamente más secciones!"); }}>Contacto</a></li>
-          </ul>
-        </nav>
         <div className="header-actions">
           <button className="header-icon-btn" aria-label="Buscar" onClick={() => alert("Usa el panel de búsqueda lateral")}>🔍</button>
-          <button className="header-icon-btn" aria-label="Mi Perfil" onClick={() => alert("Iniciar sesión (Próximamente)")}>👤</button>
+          <button className="header-icon-btn" aria-label="Mi Perfil" onClick={() => setSidebarOpen(true)}>👤</button>
           <button className="header-icon-btn cart-indicator" aria-label="Ver carrito">
             🛒
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
