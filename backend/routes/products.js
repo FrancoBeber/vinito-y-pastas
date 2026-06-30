@@ -109,4 +109,43 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
+// GET /api/products/:id/reviews - Get reviews for a product
+router.get('/products/:id/reviews', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(
+      'SELECT * FROM reviews WHERE product_id = $1 ORDER BY created_at DESC',
+      [id]
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener reseñas:', error);
+    res.status(500).json({ error: 'Error del servidor al obtener reseñas' });
+  }
+});
+
+// POST /api/products/:id/reviews - Create a review for a product
+router.post('/products/:id/reviews', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { author_name, rating, comment, user_id } = req.body;
+
+    if (!author_name || !rating) {
+      return res.status(400).json({ error: 'El nombre y la calificación son obligatorios' });
+    }
+
+    const { rows } = await db.query(
+      `INSERT INTO reviews (product_id, user_id, author_name, rating, comment)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [id, user_id || null, author_name, rating, comment || null]
+    );
+
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('Error al guardar reseña:', error);
+    res.status(500).json({ error: 'Error del servidor al guardar la reseña' });
+  }
+});
+
 module.exports = router;

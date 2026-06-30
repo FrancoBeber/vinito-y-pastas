@@ -126,6 +126,12 @@ function App() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(null);
 
+  // Reviews State
+  const [reviews, setReviews] = useState([]);
+  const [reviewName, setReviewName] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+
   // Auth state
   const [user, setUser] = useState(() => {
     try {
@@ -134,6 +140,13 @@ function App() {
     } catch { return null; }
   });
   const [currentView, setCurrentView] = useState('store');
+
+  // Set review author name if user logs in
+  useEffect(() => {
+    if (user && user.name) {
+      setReviewName(user.name);
+    }
+  }, [user]);
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -267,7 +280,7 @@ function App() {
     return () => document.removeEventListener('click', handleOutsideClick);
   }, [profileDropdownOpen]);
 
-  // Fetch details if on the single product page
+  // Fetch details and reviews if on the single product page
   useEffect(() => {
     if (!selectedProductId) return;
     const fetchSingleProduct = async () => {
@@ -277,11 +290,35 @@ function App() {
         if (!res.ok) throw new Error();
         const data = await res.json();
         setDetailProduct(data);
+
+        // Fetch reviews
+        const revRes = await fetch(`http://localhost:5000/api/products/${selectedProductId}/reviews`);
+        if (revRes.ok) {
+          const revData = await revRes.json();
+          setReviews(revData);
+        }
       } catch (err) {
         console.warn('Backend offline o error, buscando en productos simulados.');
         const mock = MOCK_PRODUCTS.find(p => p.id === selectedProductId);
         if (mock) {
           setDetailProduct(mock);
+          // Default mock reviews
+          setReviews([
+            {
+              id: 'mock-1',
+              author_name: 'Carlos M.',
+              rating: 5,
+              comment: 'Excelente vino, gran cuerpo y notas aromáticas exquisitas. Altamente recomendado.',
+              created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+            },
+            {
+              id: 'mock-2',
+              author_name: 'Valeria R.',
+              rating: 4,
+              comment: 'Muy rico vino y excelente presentación. Ideal para regalar.',
+              created_at: new Date(Date.now() - 86400000 * 5).toISOString()
+            }
+          ]);
         } else {
           setDetailError('El vino seleccionado no fue encontrado.');
         }
@@ -291,6 +328,45 @@ function App() {
     };
     fetchSingleProduct();
   }, [selectedProductId]);
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!reviewName.trim() || !reviewRating) {
+      alert('Por favor, ingresa tu nombre y una calificación.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/products/${selectedProductId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author_name: reviewName.trim(),
+          rating: reviewRating,
+          comment: reviewComment.trim(),
+          user_id: user ? user.id : null
+        })
+      });
+
+      if (!res.ok) throw new Error();
+      const newReview = await res.json();
+      setReviews(prev => [newReview, ...prev]);
+      setReviewComment('');
+      alert('¡Gracias por dejar tu reseña!');
+    } catch (err) {
+      console.warn('Error al guardar la reseña en el servidor, agregando de forma local.');
+      const localReview = {
+        id: `local-${Date.now()}`,
+        author_name: reviewName.trim(),
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+        created_at: new Date().toISOString()
+      };
+      setReviews(prev => [localReview, ...prev]);
+      setReviewComment('');
+      alert('Reseña agregada localmente (Simulación)');
+    }
+  };
 
   // Product Detail rendering handled inline in main shell
 
@@ -480,7 +556,13 @@ function App() {
             <div className="detail-empty-state">
               <h2>Error</h2>
               <p>{detailError || 'Vino no encontrado'}</p>
-              <button className="btn-close-tab" onClick={() => window.close()}>Cerrar Pestaña</button>
+              <a 
+                href={`${window.location.pathname}`} 
+                className="btn-back-catalog"
+                onClick={(e) => { e.preventDefault(); window.location.href = window.location.pathname; }}
+              >
+                Volver al catálogo
+              </a>
             </div>
           ) : (
             <div className="detail-view-layout">
@@ -491,12 +573,18 @@ function App() {
               >
                 ← Volver al catálogo
               </a>
-              <div className="product-detail-card">
-                <div className="product-detail-image-container">
-                  <span className="detail-category-tag">{detailProduct.category_name || (detailProduct.category_id === 1 ? 'Tinto' : detailProduct.category_id === 2 ? 'Blanco' : detailProduct.category_id === 3 ? 'Rosado' : 'Espumante')}</span>
+
+              <div className="product-detail-content">
+                {/* Product Image - With Wooden Frame Border only around the image */}
+                <div className="product-detail-image-box">
+                  <span className="detail-category-tag">
+                    {detailProduct.category_name || (detailProduct.category_id === 1 ? 'Tinto' : detailProduct.category_id === 2 ? 'Blanco' : detailProduct.category_id === 3 ? 'Rosado' : 'Espumante')}
+                  </span>
                   <img src={getImageUrl(detailProduct.image_url)} alt={detailProduct.name} />
                 </div>
-                <div className="product-detail-info">
+
+                {/* Product Details Block */}
+                <div className="product-detail-info-box">
                   <span className="detail-winery">{detailProduct.winery}</span>
                   <h1 className="detail-title">{detailProduct.name}</h1>
                   <p className="detail-desc">{detailProduct.description}</p>
@@ -532,6 +620,89 @@ function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Reviews Section */}
+              <section className="product-reviews-container">
+                <h2 className="reviews-section-title">Reseñas de Clientes</h2>
+                
+                <div className="reviews-layout">
+                  {/* Reviews List */}
+                  <div className="reviews-list-block">
+                    {reviews.length === 0 ? (
+                      <div className="no-reviews-state">
+                        Aún no hay opiniones para este vino. ¡Dejá tu reseña más abajo!
+                      </div>
+                    ) : (
+                      reviews.map(review => (
+                        <div key={review.id} className="review-card-item">
+                          <div className="review-card-header">
+                            <span className="review-card-author">{review.author_name}</span>
+                            <span className="review-card-rating">
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </span>
+                            <span className="review-card-date">
+                              {new Date(review.created_at).toLocaleDateString('es-AR')}
+                            </span>
+                          </div>
+                          {review.comment && (
+                            <p className="review-card-comment">{review.comment}</p>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Add Review Form */}
+                  <div className="add-review-form-block">
+                    <form onSubmit={handleReviewSubmit} className="add-review-form">
+                      <h3>Dejar una Reseña</h3>
+                      
+                      <div className="review-form-group">
+                        <label htmlFor="review-author">Nombre</label>
+                        <input 
+                          type="text" 
+                          id="review-author"
+                          placeholder="Tu nombre..."
+                          required
+                          value={reviewName}
+                          onChange={(e) => setReviewName(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="review-form-group">
+                        <label>Calificación</label>
+                        <div className="rating-selector-stars">
+                          {[1, 2, 3, 4, 5].map(num => (
+                            <button
+                              type="button"
+                              key={num}
+                              className={`star-btn ${reviewRating >= num ? 'star-filled' : 'star-empty'}`}
+                              onClick={() => setReviewRating(num)}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="review-form-group">
+                        <label htmlFor="review-comment">Comentario</label>
+                        <textarea 
+                          id="review-comment"
+                          rows="4"
+                          placeholder="¿Qué te pareció este vino?..."
+                          value={reviewComment}
+                          onChange={(e) => setReviewComment(e.target.value)}
+                        />
+                      </div>
+
+                      <button type="submit" className="btn-submit-review">
+                        Enviar Opinión
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </section>
             </div>
           )}
         </main>
