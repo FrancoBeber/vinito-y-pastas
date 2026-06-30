@@ -19,6 +19,7 @@ CREATE TABLE users (
   email VARCHAR(150) UNIQUE NOT NULL,
   password TEXT NOT NULL,
   phone VARCHAR(20),
+  role VARCHAR(20) NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

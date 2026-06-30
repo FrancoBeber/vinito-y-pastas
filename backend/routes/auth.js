@@ -27,11 +27,11 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert user
+    // Insert user (role defaults to 'customer')
     const insertQuery = `
       INSERT INTO users (name, email, password, phone)
       VALUES ($1, $2, $3, $4)
-      RETURNING id, name, email, phone, created_at
+      RETURNING id, name, email, phone, role, created_at
     `;
     const { rows: insertedRows } = await db.query(insertQuery, [
       name.trim(),
@@ -42,8 +42,8 @@ router.post('/register', async (req, res) => {
 
     const user = insertedRows[0];
 
-    // Create JWT Token
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    // Create JWT Token (include role)
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       message: 'Usuario registrado correctamente',
@@ -52,7 +52,8 @@ router.post('/register', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        role: user.role
       }
     });
 
@@ -87,8 +88,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Credenciales inválidas (email o contraseña incorrectos)' });
     }
 
-    // Create JWT Token
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    // Create JWT Token (include role)
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
       message: 'Inicio de sesión exitoso',
@@ -97,7 +98,8 @@ router.post('/login', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        role: user.role
       }
     });
 

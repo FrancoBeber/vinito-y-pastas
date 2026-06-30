@@ -117,6 +117,15 @@ const getImageUrl = (url) => {
 };
 
 function App() {
+  // Product Detail Route State
+  const [selectedProductId, setSelectedProductId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('product');
+  });
+  const [detailProduct, setDetailProduct] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(null);
+
   // Auth state
   const [user, setUser] = useState(() => {
     try {
@@ -257,6 +266,33 @@ function App() {
     document.addEventListener('click', handleOutsideClick);
     return () => document.removeEventListener('click', handleOutsideClick);
   }, [profileDropdownOpen]);
+
+  // Fetch details if on the single product page
+  useEffect(() => {
+    if (!selectedProductId) return;
+    const fetchSingleProduct = async () => {
+      setDetailLoading(true);
+      try {
+        const res = await fetch(`http://localhost:5000/api/products/${selectedProductId}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setDetailProduct(data);
+      } catch (err) {
+        console.warn('Backend offline o error, buscando en productos simulados.');
+        const mock = MOCK_PRODUCTS.find(p => p.id === selectedProductId);
+        if (mock) {
+          setDetailProduct(mock);
+        } else {
+          setDetailError('El vino seleccionado no fue encontrado.');
+        }
+      } finally {
+        setDetailLoading(false);
+      }
+    };
+    fetchSingleProduct();
+  }, [selectedProductId]);
+
+  // Product Detail rendering handled inline in main shell
 
   // If view is auth, render the auth page
   if (currentView === 'auth') {
@@ -415,23 +451,92 @@ function App() {
 
 
       {/* Cover / Hero Banner */}
-      <section className="cover-section" style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${getImageUrl('images/cover.webp')})` }}>
-        <div className="cover-content">
-          <h2>Vinos Seleccionados.<br />Momentos Inolvidables.</h2>
-          <p>Descubrí nuestra selección de vinos gourmet de las mejores bodegas de Argentina.</p>
-          <button className="btn-cover" onClick={() => document.getElementById('catalog').scrollIntoView({ behavior: 'smooth' })}>
-            Ver Colección
-          </button>
-        </div>
-      </section>
+      {!selectedProductId && (
+        <section className="cover-section" style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${getImageUrl('images/cover.webp')})` }}>
+          <div className="cover-content">
+            <h2>Vinos Seleccionados.<br />Momentos Inolvidables.</h2>
+            <p>Descubrí nuestra selección de vinos gourmet de las mejores bodegas de Argentina.</p>
+            <button className="btn-cover" onClick={() => document.getElementById('catalog').scrollIntoView({ behavior: 'smooth' })}>
+              Ver Colección
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Section Divider */}
       <div className="section-divider">
-        <h2>Nuestros Vinos</h2>
+        <h2>{selectedProductId ? 'Detalle de Producto' : 'Nuestros Vinos'}</h2>
       </div>
 
-      {/* Main Catalog Area */}
-      <main className="catalog-container" id="catalog">
+      {/* Main Content Area */}
+      {selectedProductId ? (
+        <main className="detail-container">
+          {detailLoading ? (
+            <div className="detail-loading-state">
+              <div className="loading-spinner"></div>
+              Cargando detalles del vino...
+            </div>
+          ) : detailError || !detailProduct ? (
+            <div className="detail-empty-state">
+              <h2>Error</h2>
+              <p>{detailError || 'Vino no encontrado'}</p>
+              <button className="btn-close-tab" onClick={() => window.close()}>Cerrar Pestaña</button>
+            </div>
+          ) : (
+            <div className="detail-view-layout">
+              <a 
+                href={`${window.location.pathname}`}
+                className="detail-breadcrumb"
+                onClick={(e) => { e.preventDefault(); window.location.href = window.location.pathname; }}
+              >
+                ← Volver al catálogo
+              </a>
+              <div className="product-detail-card">
+                <div className="product-detail-image-container">
+                  <span className="detail-category-tag">{detailProduct.category_name || (detailProduct.category_id === 1 ? 'Tinto' : detailProduct.category_id === 2 ? 'Blanco' : detailProduct.category_id === 3 ? 'Rosado' : 'Espumante')}</span>
+                  <img src={getImageUrl(detailProduct.image_url)} alt={detailProduct.name} />
+                </div>
+                <div className="product-detail-info">
+                  <span className="detail-winery">{detailProduct.winery}</span>
+                  <h1 className="detail-title">{detailProduct.name}</h1>
+                  <p className="detail-desc">{detailProduct.description}</p>
+                  
+                  <div className="detail-divider"></div>
+                  
+                  <div className="detail-price-stock">
+                    <div>
+                      <div className="detail-price">
+                        ${parseFloat(detailProduct.price).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div className={`detail-stock ${detailProduct.stock <= 5 ? 'low-stock' : ''}`}>
+                        Stock disponible: {detailProduct.stock} unidades
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="detail-actions">
+                    <button 
+                      className="btn-detail-add"
+                      disabled={detailProduct.stock === 0}
+                      onClick={() => addToCart(detailProduct)}
+                    >
+                      {detailProduct.stock === 0 ? 'Sin Stock' : 'Añadir al Carrito'}
+                    </button>
+                    <a 
+                      href={`${window.location.pathname}`}
+                      className="btn-back-catalog"
+                      onClick={(e) => { e.preventDefault(); window.location.href = window.location.pathname; }}
+                    >
+                      Volver al catálogo
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      ) : (
+        <main className="catalog-container" id="catalog">
         {/* Sidebar Filters */}
         <aside className="filters-sidebar">
           {/* Search */}
@@ -548,7 +653,17 @@ function App() {
           ) : (
             <div className="products-grid">
               {products.map(product => (
-                <article key={product.id} className="wine-card">
+                <article 
+                  key={product.id} 
+                  className="wine-card"
+                  onClick={(e) => {
+                    // Prevent opening detail page when clicking Add to Cart
+                    if (e.target.closest('.btn-add-cart')) return;
+                    const url = `${window.location.origin}${window.location.pathname}?product=${product.id}`;
+                    window.open(url, '_blank');
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="wine-card-image">
                     <span className="wine-category-tag">{product.category_name}</span>
                     <img src={getImageUrl(product.image_url)} alt={product.name} />
@@ -578,7 +693,8 @@ function App() {
             </div>
           )}
         </section>
-      </main>
+        </main>
+      )}
 
       {/* Bottom Features Bar */}
       <footer className="features-bar">

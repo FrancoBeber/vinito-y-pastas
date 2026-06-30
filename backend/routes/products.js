@@ -88,4 +88,25 @@ router.get('/wineries', async (req, res) => {
   }
 });
 
+// GET /api/products/:id - Get single product
+router.get('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query(`
+      SELECT p.*, c.name as category_name 
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.id = $1
+    `, [id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al obtener producto:', error);
+    res.status(500).json({ error: 'Error del servidor al obtener producto' });
+  }
+});
+
 module.exports = router;
