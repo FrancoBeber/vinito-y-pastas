@@ -234,8 +234,13 @@ function App() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   
-  const [loading, setLoading] = useState(true);
-  const [cartCount, setCartCount] = useState(0);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vyp_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [cartOpen, setCartOpen] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vinosOpen, setVinosOpen] = useState(true);
@@ -338,10 +343,50 @@ function App() {
     setMaxPrice('');
   };
 
+  const [loading, setLoading] = useState(true);
+
   const addToCart = (product) => {
-    setCartCount(prev => prev + 1);
-    alert(`¡"${product.name}" agregado al carrito! (Simulación)`);
+    setCartItems(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        if (existing.quantity >= product.stock) {
+          alert('No hay más stock disponible de este vino.');
+          return prev;
+        }
+        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    setCartOpen(true);
   };
+
+  const updateCartQuantity = (productId, amount) => {
+    setCartItems(prev => {
+      return prev.map(item => {
+        if (item.id === productId) {
+          const newQty = item.quantity + amount;
+          if (newQty <= 0) return null;
+          if (amount > 0 && newQty > item.stock) {
+            alert('No hay más stock disponible de este vino.');
+            return item;
+          }
+          return { ...item, quantity: newQty };
+        }
+        return item;
+      }).filter(Boolean);
+    });
+  };
+
+  const removeFromCart = (productId) => {
+    setCartItems(prev => prev.filter(item => item.id !== productId));
+  };
+
+  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const cartTotal = cartItems.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+
+  useEffect(() => {
+    localStorage.setItem('vyp_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
@@ -645,6 +690,65 @@ function App() {
       {/* Sidebar Overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
+      {/* Cart Overlay */}
+      {cartOpen && <div className="cart-overlay" onClick={() => setCartOpen(false)} />}
+
+      {/* Cart Sidebar / Drawer */}
+      <aside className={`cart-drawer ${cartOpen ? 'open' : ''}`}>
+        <div className="cart-drawer-header">
+          <h3>Tu Carrito</h3>
+          <button className="cart-drawer-close" onClick={() => setCartOpen(false)} aria-label="Cerrar carrito">✕</button>
+        </div>
+
+        {cartItems.length === 0 ? (
+          <div className="cart-drawer-empty">
+            <span className="cart-empty-icon">🛒</span>
+            <p>Tu carrito está vacío</p>
+            <button className="btn-start-shopping" onClick={() => { setCartOpen(false); navigateTo('store'); }}>
+              Explorar Vinos
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="cart-drawer-items">
+              {cartItems.map(item => (
+                <div key={item.id} className="cart-item-row">
+                  <img src={getImageUrl(item.image_url)} alt={item.name} className="cart-item-img" />
+                  <div className="cart-item-info">
+                    <span className="cart-item-name">{item.name}</span>
+                    <span className="cart-item-winery">{item.winery}</span>
+                    <span className="cart-item-price">
+                      ${parseFloat(item.price).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </span>
+                    
+                    <div className="cart-item-qty-control">
+                      <button className="qty-btn" onClick={() => updateCartQuantity(item.id, -1)}>-</button>
+                      <span className="qty-val">{item.quantity}</span>
+                      <button className="qty-btn" onClick={() => updateCartQuantity(item.id, 1)}>+</button>
+                      <button className="remove-item-btn" onClick={() => removeFromCart(item.id)} title="Eliminar">🗑️</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="cart-drawer-footer">
+              <div className="cart-summary-line">
+                <span>Subtotal</span>
+                <span className="cart-subtotal-val">
+                  ${cartTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <button className="btn-cart-checkout" onClick={() => { 
+                alert('¡Próximamente pasarela de pago!'); 
+              }}>
+                Ir a pagar
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+
       {/* Sidebar Navigation */}
       <nav className={`sidebar-nav ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
@@ -809,7 +913,7 @@ function App() {
             )}
           </div>
 
-          <button className="header-icon-btn cart-indicator" aria-label="Ver carrito">
+          <button className="header-icon-btn cart-indicator" aria-label="Ver carrito" onClick={() => setCartOpen(true)}>
             🛒
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </button>
