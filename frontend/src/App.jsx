@@ -19,6 +19,33 @@ const MOCK_WINERIES = [
   'Escorihuela Gascón'
 ];
 
+const MOCK_CAROUSEL = [
+  {
+    image: 'images/vineyard.png',
+    title: 'Vinos de Altura',
+    subtitle: 'Descubrí la pureza de los viñedos mendocinos a los pies de los Andes.',
+    btnText: 'Explorar Vinos'
+  },
+  {
+    image: 'images/cellar.png',
+    title: 'El Arte de la Guarda',
+    subtitle: 'Barricas seleccionadas que descansan en silencio para lograr la máxima complejidad.',
+    btnText: 'Ver Selección'
+  },
+  {
+    image: 'images/cover.webp',
+    title: 'Maridajes Gourmet',
+    subtitle: 'El encuentro perfecto entre un gran vino y pastas artesanales.',
+    btnText: 'Ver Catálogo'
+  }
+];
+
+const MOCK_HOMEPAGE_REVIEWS = [
+  { author: 'María L.', rating: 5, text: 'Excelente servicio y la selección de vinos es insuperable. El Rutini Malbec llegó impecable y a tiempo.' },
+  { author: 'Juan P.', rating: 5, text: 'La combinación de pastas frescas y vinos seleccionados hace que cada cena familiar sea única. Altamente recomendados.' },
+  { author: 'Sofía M.', rating: 4, text: 'Muy buena atención y los envíos al interior son rápidos. Compré Chandon para un brindis y todo excelente.' }
+];
+
 const MOCK_PRODUCTS = [
   {
     id: '1',
@@ -139,7 +166,48 @@ function App() {
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }
   });
-  const [currentView, setCurrentView] = useState('store');
+  
+  // Navigation states
+  const [currentView, setCurrentView] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('product') ? 'store' : 'home';
+  });
+
+  const navigateTo = (view, categoryId = '') => {
+    setSelectedProductId(null);
+    setCurrentView(view);
+    setSelectedCategory(categoryId);
+    // Clear other search filters when navigating
+    if (view === 'home') {
+      setSearch('');
+      setSelectedWinery('');
+      setMinPrice('');
+      setMaxPrice('');
+    }
+    // Clean URL query parameters
+    window.history.pushState(null, '', window.location.pathname);
+  };
+
+  // Homepage Carousel states
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [homeReviewIndex, setHomeReviewIndex] = useState(0);
+
+  // Auto-play carousels
+  useEffect(() => {
+    if (currentView !== 'home' || selectedProductId) return;
+    const interval = setInterval(() => {
+      setCarouselIndex(prev => (prev + 1) % MOCK_CAROUSEL.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [currentView, selectedProductId]);
+
+  useEffect(() => {
+    if (currentView !== 'home' || selectedProductId) return;
+    const interval = setInterval(() => {
+      setHomeReviewIndex(prev => (prev + 1) % MOCK_HOMEPAGE_REVIEWS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [currentView, selectedProductId]);
 
   // Set review author name if user logs in
   useEffect(() => {
@@ -390,7 +458,7 @@ function App() {
 
         <ul className="sidebar-menu">
           <li className="sidebar-item">
-            <a href="#inicio" onClick={(e) => { e.preventDefault(); setSidebarOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+            <a href="#inicio" onClick={(e) => { e.preventDefault(); navigateTo('home'); setSidebarOpen(false); }}>
               <span className="sidebar-icon">🏠</span>Inicio
             </a>
           </li>
@@ -402,16 +470,16 @@ function App() {
             </a>
             {vinosOpen && (
               <ul className="sidebar-submenu">
-                <li><a href="#tintos" onClick={(e) => { e.preventDefault(); setSelectedCategory('4'); setSidebarOpen(false); }}>Tintos</a></li>
-                <li><a href="#blancos" onClick={(e) => { e.preventDefault(); setSelectedCategory('2'); setSidebarOpen(false); }}>Blancos</a></li>
-                <li><a href="#rosados" onClick={(e) => { e.preventDefault(); setSelectedCategory('3'); setSidebarOpen(false); }}>Rosados</a></li>
-                <li><a href="#espumantes" onClick={(e) => { e.preventDefault(); setSelectedCategory('1'); setSidebarOpen(false); }}>Espumantes</a></li>
+                <li><a href="#tintos" onClick={(e) => { e.preventDefault(); navigateTo('store', '1'); setSidebarOpen(false); }}>Tintos</a></li>
+                <li><a href="#blancos" onClick={(e) => { e.preventDefault(); navigateTo('store', '2'); setSidebarOpen(false); }}>Blancos</a></li>
+                <li><a href="#rosados" onClick={(e) => { e.preventDefault(); navigateTo('store', '3'); setSidebarOpen(false); }}>Rosados</a></li>
+                <li><a href="#espumantes" onClick={(e) => { e.preventDefault(); navigateTo('store', '4'); setSidebarOpen(false); }}>Espumantes</a></li>
               </ul>
             )}
           </li>
 
           <li className="sidebar-item">
-            <a href="#bodegas" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>
+            <a href="#bodegas" onClick={(e) => { e.preventDefault(); navigateTo('store'); setSidebarOpen(false); }}>
               <span className="sidebar-icon">🏛️</span>Bodegas
             </a>
           </li>
@@ -423,7 +491,7 @@ function App() {
           </li>
 
           <li className="sidebar-item">
-            <a href="#ofertas" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>
+            <a href="#ofertas" onClick={(e) => { e.preventDefault(); navigateTo('home'); setSidebarOpen(false); setTimeout(() => { document.querySelector('.section-divider')?.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>
               <span className="sidebar-icon">🏷️</span>Ofertas
             </a>
           </li>
@@ -465,7 +533,7 @@ function App() {
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú">
             <span></span><span></span><span></span>
           </button>
-          <div className="logo-block">
+          <div className="logo-block" style={{ cursor: 'pointer' }} onClick={() => navigateTo('home')}>
             <img src={getImageUrl('images/logo.webp')} alt="Vinito y Pastas Logo" className="logo-img" />
             <div className="logo-text">
               <h1>VINITO <span>y</span> PASTAS</h1>
@@ -526,23 +594,12 @@ function App() {
       </header>
 
 
-      {/* Cover / Hero Banner */}
-      {!selectedProductId && (
-        <section className="cover-section" style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${getImageUrl('images/cover.webp')})` }}>
-          <div className="cover-content">
-            <h2>Vinos Seleccionados.<br />Momentos Inolvidables.</h2>
-            <p>Descubrí nuestra selección de vinos gourmet de las mejores bodegas de Argentina.</p>
-            <button className="btn-cover" onClick={() => document.getElementById('catalog').scrollIntoView({ behavior: 'smooth' })}>
-              Ver Colección
-            </button>
-          </div>
-        </section>
+      {/* Section Divider for views other than Home */}
+      {!selectedProductId && currentView !== 'home' && (
+        <div className="section-divider">
+          <h2>Nuestros Vinos</h2>
+        </div>
       )}
-
-      {/* Section Divider */}
-      <div className="section-divider">
-        <h2>{selectedProductId ? 'Detalle de Producto' : 'Nuestros Vinos'}</h2>
-      </div>
 
       {/* Main Content Area */}
       {selectedProductId ? (
@@ -559,7 +616,7 @@ function App() {
               <a 
                 href={`${window.location.pathname}`} 
                 className="btn-back-catalog"
-                onClick={(e) => { e.preventDefault(); window.location.href = window.location.pathname; }}
+                onClick={(e) => { e.preventDefault(); navigateTo('store'); }}
               >
                 Volver al catálogo
               </a>
@@ -569,13 +626,13 @@ function App() {
               <a 
                 href={`${window.location.pathname}`}
                 className="detail-breadcrumb"
-                onClick={(e) => { e.preventDefault(); window.location.href = window.location.pathname; }}
+                onClick={(e) => { e.preventDefault(); navigateTo('store'); }}
               >
                 ← Volver al catálogo
               </a>
 
               <div className="product-detail-content">
-                {/* Product Image - With Wooden Frame Border only around the image */}
+                {/* Product Image */}
                 <div className="product-detail-image-box">
                   <span className="detail-category-tag">
                     {detailProduct.category_name || (detailProduct.category_id === 1 ? 'Tinto' : detailProduct.category_id === 2 ? 'Blanco' : detailProduct.category_id === 3 ? 'Rosado' : 'Espumante')}
@@ -613,7 +670,7 @@ function App() {
                     <a 
                       href={`${window.location.pathname}`}
                       className="btn-back-catalog"
-                      onClick={(e) => { e.preventDefault(); window.location.href = window.location.pathname; }}
+                      onClick={(e) => { e.preventDefault(); navigateTo('store'); }}
                     >
                       Volver al catálogo
                     </a>
@@ -705,6 +762,167 @@ function App() {
               </section>
             </div>
           )}
+        </main>
+      ) : currentView === 'home' ? (
+        <main className="home-container">
+          {/* Hero Carousel */}
+          <section className="home-carousel">
+            {MOCK_CAROUSEL.map((slide, idx) => (
+              <div 
+                key={idx} 
+                className={`carousel-slide ${carouselIndex === idx ? 'active' : ''}`}
+                style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${getImageUrl(slide.image)})` }}
+              >
+                <div className="carousel-content">
+                  <h2 className="carousel-title">{slide.title}</h2>
+                  <p className="carousel-subtitle">{slide.subtitle}</p>
+                  <button className="btn-carousel" onClick={() => navigateTo('store')}>
+                    {slide.btnText}
+                  </button>
+                </div>
+              </div>
+            ))}
+            
+            {/* Carousel dots */}
+            <div className="carousel-dots">
+              {MOCK_CAROUSEL.map((_, idx) => (
+                <button 
+                  key={idx} 
+                  className={`dot ${carouselIndex === idx ? 'active' : ''}`}
+                  onClick={() => setCarouselIndex(idx)}
+                  aria-label={`Ir al slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* Section Divider */}
+          <div className="section-divider">
+            <h2>Ofertas Destacadas</h2>
+          </div>
+
+          {/* Ofertas Grid */}
+          <section className="home-offers-grid">
+            <div className="products-grid">
+              {(products.length > 0 ? products : MOCK_PRODUCTS).slice(0, 3).map(product => {
+                const discountPrice = parseFloat(product.price);
+                const originalPrice = discountPrice * 1.15;
+                return (
+                  <article 
+                    key={product.id} 
+                    className="wine-card"
+                    onClick={(e) => {
+                      if (e.target.closest('.btn-add-cart')) return;
+                      const url = `${window.location.origin}${window.location.pathname}?product=${product.id}`;
+                      window.open(url, '_blank');
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="wine-card-image">
+                      <span className="wine-category-tag offer-badge">OFERTA 15% OFF</span>
+                      <img src={getImageUrl(product.image_url)} alt={product.name} />
+                    </div>
+                    <div className="wine-info">
+                      <span className="wine-winery">{product.winery}</span>
+                      <h3 className="wine-title">{product.name}</h3>
+                      <p className="wine-desc">{product.description}</p>
+                      <div className="wine-footer">
+                        <div>
+                          <div className="wine-price-discount-group">
+                            <span className="original-price-crossed">${originalPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                            <span className="wine-price-offer">${discountPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className={`wine-stock ${product.stock <= 5 ? 'low-stock' : ''}`}>
+                            Stock: {product.stock} unidades
+                          </div>
+                        </div>
+                        <button 
+                          className="btn-add-cart" 
+                          disabled={product.stock === 0}
+                          onClick={() => addToCart(product)}
+                        >
+                          {product.stock === 0 ? 'Sin Stock' : 'Añadir'}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Section Divider */}
+          <div className="section-divider">
+            <h2>Novedades y Eventos</h2>
+          </div>
+
+          {/* Novedades Block */}
+          <section className="home-news-section">
+            <div className="news-grid">
+              <div className="news-card">
+                <div className="news-img-box">
+                  <img src={getImageUrl('images/catena_cabernet.webp')} alt="Cosechas nuevas" />
+                </div>
+                <div className="news-info">
+                  <h3>Nuevas Añadas Exclusivas</h3>
+                  <p>Llegaron las cosechas más esperadas del año de Catena Zapata y El Enemigo. Añadas excepcionales con puntuaciones sobresalientes de críticos internacionales, ideales para coleccionistas.</p>
+                </div>
+              </div>
+              <div className="news-card">
+                <div className="news-img-box">
+                  <img src={getImageUrl('images/luigi_chardonnay.webp')} alt="Cata de vinos" />
+                </div>
+                <div className="news-info">
+                  <h3>Catas Privadas en Cava</h3>
+                  <p>Formá parte de nuestros encuentros mensuales de degustación dirigidos por destacados sommeliers. Una oportunidad única para aprender sobre maridaje, notas de cata y la historia de las bodegas.</p>
+                </div>
+              </div>
+              <div className="news-card">
+                <div className="news-img-box">
+                  <img src={getImageUrl('images/salentein_rose.webp')} alt="Vinos y Pastas" />
+                </div>
+                <div className="news-info">
+                  <h3>Maridajes y Pastas del Chef</h3>
+                  <p>Descubrí el secreto culinario de combinar pastas de sémola de trigo candeal con vinos de guarda. Te aconsejamos la mejor opción para realzar cada salsa y textura.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Section Divider */}
+          <div className="section-divider">
+            <h2>Opiniones de Nuestros Clientes</h2>
+          </div>
+
+          {/* Reviews Carousel */}
+          <section className="home-reviews-carousel">
+            <div className="reviews-carousel-container">
+              {MOCK_HOMEPAGE_REVIEWS.map((rev, idx) => (
+                <div 
+                  key={idx} 
+                  className={`home-review-slide ${homeReviewIndex === idx ? 'active' : ''}`}
+                >
+                  <div className="home-review-stars">
+                    {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                  </div>
+                  <p className="home-review-text">"{rev.text}"</p>
+                  <span className="home-review-author">— {rev.author}</span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Reviews dots */}
+            <div className="carousel-dots">
+              {MOCK_HOMEPAGE_REVIEWS.map((_, idx) => (
+                <button 
+                  key={idx} 
+                  className={`dot ${homeReviewIndex === idx ? 'active' : ''}`}
+                  onClick={() => setHomeReviewIndex(idx)}
+                  aria-label={`Ir a reseña ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </section>
         </main>
       ) : (
         <main className="catalog-container" id="catalog">
