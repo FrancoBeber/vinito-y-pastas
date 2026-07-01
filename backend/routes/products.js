@@ -148,4 +148,73 @@ router.post('/products/:id/reviews', async (req, res) => {
   }
 });
 
+// POST /api/products - Create a new product (admin only)
+router.post('/products', async (req, res) => {
+  try {
+    const { name, description, price, stock, category_id, image_url, winery } = req.body;
+
+    if (!name || !price || stock === undefined || !category_id) {
+      return res.status(400).json({ error: 'Por favor, completa los campos obligatorios (nombre, precio, stock, categoría)' });
+    }
+
+    const { rows } = await db.query(
+      `INSERT INTO products (name, description, price, stock, category_id, image_url, winery)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [name, description || null, parseFloat(price), parseInt(stock), parseInt(category_id), image_url || null, winery || null]
+    );
+
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('Error al crear producto:', error);
+    res.status(500).json({ error: 'Error del servidor al crear producto' });
+  }
+});
+
+// PUT /api/products/:id - Update a product (admin only)
+router.put('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, stock, category_id, image_url, winery } = req.body;
+
+    if (!name || !price || stock === undefined || !category_id) {
+      return res.status(400).json({ error: 'Por favor, completa los campos obligatorios' });
+    }
+
+    const { rows } = await db.query(
+      `UPDATE products 
+       SET name = $1, description = $2, price = $3, stock = $4, category_id = $5, image_url = $6, winery = $7
+       WHERE id = $8
+       RETURNING *`,
+      [name, description || null, parseFloat(price), parseInt(stock), parseInt(category_id), image_url || null, winery || null, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar producto:', error);
+    res.status(500).json({ error: 'Error del servidor al actualizar producto' });
+  }
+});
+
+// DELETE /api/products/:id - Delete a product (admin only)
+router.delete('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await db.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    res.json({ message: 'Producto eliminado correctamente', product: rows[0] });
+  } catch (error) {
+    console.error('Error al eliminar producto:', error);
+    res.status(500).json({ error: 'Error del servidor al eliminar producto' });
+  }
+});
+
 module.exports = router;

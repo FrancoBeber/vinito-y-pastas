@@ -438,6 +438,116 @@ function App() {
     }
   };
 
+  // Admin Product Form State
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [formName, setFormName] = useState('');
+  const [formWinery, setFormWinery] = useState('');
+  const [formPrice, setFormPrice] = useState('');
+  const [formStock, setFormStock] = useState('');
+  const [formCategoryId, setFormCategoryId] = useState('');
+  const [formImageUrl, setFormImageUrl] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+
+  const handleOpenAdminForm = (product = null) => {
+    setEditingProduct(product);
+    if (product) {
+      setFormName(product.name);
+      setFormWinery(product.winery || '');
+      setFormPrice(product.price);
+      setFormStock(product.stock);
+      setFormCategoryId(product.category_id || '');
+      setFormImageUrl(product.image_url || '');
+      setFormDescription(product.description || '');
+    } else {
+      setFormName('');
+      setFormWinery('');
+      setFormPrice('');
+      setFormStock('');
+      setFormCategoryId('');
+      setFormImageUrl('/images/cover.webp');
+      setFormDescription('');
+    }
+    setShowAdminForm(true);
+  };
+
+  const handleAdminFormSubmit = async (e) => {
+    e.preventDefault();
+    const productData = {
+      name: formName.trim(),
+      winery: formWinery.trim(),
+      price: parseFloat(formPrice),
+      stock: parseInt(formStock),
+      category_id: parseInt(formCategoryId),
+      image_url: formImageUrl.trim(),
+      description: formDescription.trim()
+    };
+
+    try {
+      let res;
+      if (editingProduct) {
+        // Edit product
+        res = await fetch(`http://localhost:5000/api/products/${editingProduct.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(productData)
+        });
+      } else {
+        // Add new product
+        res = await fetch(`http://localhost:5000/api/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(productData)
+        });
+      }
+
+      if (!res.ok) throw new Error();
+      const updatedProduct = await res.json();
+
+      // Refresh product list from database
+      const prodRes = await fetch(`http://localhost:5000/api/products`);
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        setProducts(prodData);
+      } else {
+        // Local fallback
+        if (editingProduct) {
+          setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...updatedProduct } : p));
+        } else {
+          setProducts(prev => [updatedProduct, ...prev]);
+        }
+      }
+
+      setShowAdminForm(false);
+      alert(editingProduct ? '¡Vino modificado correctamente!' : '¡Nuevo vino guardado correctamente!');
+    } catch (err) {
+      alert('Error al guardar el producto en el servidor.');
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/products/${productId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error();
+
+      // Refresh product list from database
+      const prodRes = await fetch(`http://localhost:5000/api/products`);
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        setProducts(prodData);
+      } else {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+      }
+      alert('¡Vino eliminado correctamente!');
+    } catch (err) {
+      alert('Error al eliminar el producto del servidor.');
+    }
+  };
+
   // Product Detail rendering handled inline in main shell
 
   // If view is auth, render the auth page
@@ -528,6 +638,9 @@ function App() {
                 <li><a href="#pedidos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis pedidos</a></li>
                 <li><a href="#direcciones" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis direcciones</a></li>
                 <li><a href="#misfavoritos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis favoritos</a></li>
+                {user && user.role === 'admin' && (
+                  <li><a href="#admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); setSidebarOpen(false); }}>Panel Administración</a></li>
+                )}
                 {user ? (
                   <li><a href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Cerrar sesión</a></li>
                 ) : (
@@ -583,7 +696,12 @@ function App() {
                   <li><a href="#pedidos" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); alert('¡Próximamente!'); }}>Mis pedidos</a></li>
                   <li><a href="#direcciones" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); alert('¡Próximamente!'); }}>Mis direcciones</a></li>
                   <li><a href="#misfavoritos" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); alert('¡Próximamente!'); }}>Mis favoritos</a></li>
-                  <div className="profile-dropdown-divider" />
+                  {user && user.role === 'admin' && (
+                    <>
+                      <li><a href="#admin" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); setCurrentView('admin'); }}>Panel Administración</a></li>
+                      <div className="profile-dropdown-divider" />
+                    </>
+                  )}
                   {user ? (
                     <li>
                       <a href="#logout" className="profile-logout-btn" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); handleLogout(); }}>
@@ -613,7 +731,7 @@ function App() {
       {/* Section Divider for views other than Home */}
       {!selectedProductId && currentView !== 'home' && (
         <div className="section-divider">
-          <h2>Nuestros Vinos</h2>
+          <h2>{currentView === 'admin' ? 'Administración' : 'Nuestros Vinos'}</h2>
         </div>
       )}
 
@@ -778,6 +896,157 @@ function App() {
               </section>
             </div>
           )}
+        </main>
+      ) : currentView === 'admin' ? (
+        <main className="admin-container">
+          <div className="admin-header">
+            <h2>Panel de Administración de Productos</h2>
+            <button className="btn-admin-add" onClick={() => handleOpenAdminForm()}>
+              + Agregar Nuevo Vino
+            </button>
+          </div>
+
+          {/* Form Modal/Panel for Adding/Editing */}
+          {showAdminForm && (
+            <div className="admin-form-overlay">
+              <div className="admin-form-card">
+                <h3>{editingProduct ? 'Modificar Vino' : 'Agregar Nuevo Vino'}</h3>
+                <form onSubmit={handleAdminFormSubmit} className="admin-product-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nombre del Vino *</label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="Ej: Rutini Malbec"
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Bodega *</label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="Ej: Rutini Wines"
+                        value={formWinery}
+                        onChange={(e) => setFormWinery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Precio *</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        required 
+                        placeholder="Ej: 12500"
+                        value={formPrice}
+                        onChange={(e) => setFormPrice(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Stock *</label>
+                      <input 
+                        type="number" 
+                        required 
+                        placeholder="Ej: 45"
+                        value={formStock}
+                        onChange={(e) => setFormStock(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Categoría *</label>
+                      <select 
+                        required 
+                        value={formCategoryId}
+                        onChange={(e) => setFormCategoryId(e.target.value)}
+                      >
+                        <option value="">Selecciona una...</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>URL de Imagen</label>
+                      <input 
+                        type="text" 
+                        placeholder="Ej: /images/rutini_malbec.webp"
+                        value={formImageUrl}
+                        onChange={(e) => setFormImageUrl(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group full-width">
+                    <label>Descripción</label>
+                    <textarea 
+                      rows="3"
+                      placeholder="Aromas, notas de cata, crianza..."
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-actions">
+                    <button type="submit" className="btn-form-save">
+                      Guardar Cambios
+                    </button>
+                    <button type="button" className="btn-form-cancel" onClick={() => setShowAdminForm(false)}>
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Table list of all products */}
+          <div className="admin-table-wrapper">
+            <table className="admin-products-table">
+              <thead>
+                <tr>
+                  <th>Imagen</th>
+                  <th>Vino</th>
+                  <th>Bodega</th>
+                  <th>Categoría</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th style={{ textAlign: 'center' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map(product => (
+                  <tr key={product.id}>
+                    <td>
+                      <img src={getImageUrl(product.image_url)} alt={product.name} className="admin-table-img" />
+                    </td>
+                    <td className="admin-table-title">{product.name}</td>
+                    <td>{product.winery}</td>
+                    <td><span className="admin-table-cat">{product.category_name}</span></td>
+                    <td className="admin-table-price">${parseFloat(product.price).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                    <td className={product.stock <= 5 ? 'low-stock-cell' : ''}>{product.stock} un.</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div className="admin-actions-btns">
+                        <button className="btn-action-edit" onClick={() => handleOpenAdminForm(product)}>
+                          Editar
+                        </button>
+                        <button className="btn-action-delete" onClick={() => handleDeleteProduct(product.id)}>
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </main>
       ) : currentView === 'home' ? (
         <main className="home-container">
