@@ -173,10 +173,11 @@ function App() {
     return params.get('product') ? 'store' : 'home';
   });
 
-  const navigateTo = (view, categoryId = '') => {
+  const navigateTo = (view, categoryId = '', wineryName = '') => {
     setSelectedProductId(null);
     setCurrentView(view);
     setSelectedCategory(categoryId);
+    setSelectedWinery(wineryName);
     // Clear other search filters when navigating
     if (view === 'home') {
       setSearch('');
@@ -232,6 +233,7 @@ function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vinosOpen, setVinosOpen] = useState(true);
+  const [bodegasOpen, setBodegasOpen] = useState(false);
   const [cuentaOpen, setCuentaOpen] = useState(true);
 
   const handleLogin = (userData) => {
@@ -470,18 +472,32 @@ function App() {
             </a>
             {vinosOpen && (
               <ul className="sidebar-submenu">
-                <li><a href="#tintos" onClick={(e) => { e.preventDefault(); navigateTo('store', '1'); setSidebarOpen(false); }}>Tintos</a></li>
-                <li><a href="#blancos" onClick={(e) => { e.preventDefault(); navigateTo('store', '2'); setSidebarOpen(false); }}>Blancos</a></li>
-                <li><a href="#rosados" onClick={(e) => { e.preventDefault(); navigateTo('store', '3'); setSidebarOpen(false); }}>Rosados</a></li>
-                <li><a href="#espumantes" onClick={(e) => { e.preventDefault(); navigateTo('store', '4'); setSidebarOpen(false); }}>Espumantes</a></li>
+                <li><a href="#todos-vinos" onClick={(e) => { e.preventDefault(); navigateTo('store', '', ''); setSidebarOpen(false); }}>Ver Todos</a></li>
+                <li><a href="#tintos" onClick={(e) => { e.preventDefault(); navigateTo('store', '1', ''); setSidebarOpen(false); }}>Tintos</a></li>
+                <li><a href="#blancos" onClick={(e) => { e.preventDefault(); navigateTo('store', '2', ''); setSidebarOpen(false); }}>Blancos</a></li>
+                <li><a href="#rosados" onClick={(e) => { e.preventDefault(); navigateTo('store', '3', ''); setSidebarOpen(false); }}>Rosados</a></li>
+                <li><a href="#espumantes" onClick={(e) => { e.preventDefault(); navigateTo('store', '4', ''); setSidebarOpen(false); }}>Espumantes</a></li>
               </ul>
             )}
           </li>
 
-          <li className="sidebar-item">
-            <a href="#bodegas" onClick={(e) => { e.preventDefault(); navigateTo('store'); setSidebarOpen(false); }}>
+          <li className="sidebar-item has-submenu">
+            <a href="#bodegas" onClick={(e) => { e.preventDefault(); setBodegasOpen(!bodegasOpen); }}>
               <span className="sidebar-icon">🏛️</span>Bodegas
+              <span className={`submenu-arrow ${bodegasOpen ? 'open' : ''}`}>›</span>
             </a>
+            {bodegasOpen && (
+              <ul className="sidebar-submenu">
+                <li><a href="#todas-bodegas" onClick={(e) => { e.preventDefault(); navigateTo('store', '', ''); setSidebarOpen(false); }}>Ver Todas</a></li>
+                {wineries.map(winery => (
+                  <li key={winery}>
+                    <a href={`#${winery.replace(/\s+/g, '-').toLowerCase()}`} onClick={(e) => { e.preventDefault(); navigateTo('store', '', winery); setSidebarOpen(false); }}>
+                      {winery}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
 
           <li className="sidebar-item">
