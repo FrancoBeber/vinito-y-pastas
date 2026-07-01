@@ -265,4 +265,62 @@ router.delete('/products/:id', async (req, res) => {
   }
 });
 
+// GET /api/admin/orders - Get all orders with details (admin only)
+router.get('/admin/orders', async (req, res) => {
+  try {
+    const ordersResult = await db.query(`
+      SELECT o.*, u.name as user_name, u.email as user_email
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+      ORDER BY o.created_at DESC
+    `);
+    
+    const orders = ordersResult.rows;
+    
+    // Fetch items for each order
+    for (let order of orders) {
+      const itemsResult = await db.query(`
+        SELECT oi.*, p.name as product_name, p.image_url
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = $1
+      `, [order.id]);
+      order.items = itemsResult.rows;
+    }
+    
+    res.json(orders);
+  } catch (error) {
+    console.error('Error al obtener pedidos:', error);
+    res.status(500).json({ error: 'Error del servidor al obtener pedidos' });
+  }
+});
+
+// PUT /api/admin/orders/:id/status - Update order status (admin only)
+router.put('/admin/orders/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'El estado es requerido' });
+    }
+    
+    const { rows } = await db.query(`
+      UPDATE orders
+      SET status = $1, notes = COALESCE($2, notes), updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+      RETURNING *
+    `, [status, notes || null, id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar pedido:', error);
+    res.status(500).json({ error: 'Error del servidor al actualizar pedido' });
+  }
+});
+
 module.exports = router;

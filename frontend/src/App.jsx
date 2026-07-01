@@ -224,6 +224,8 @@ function App() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [wineries, setWineries] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   
   // Filter States
   const [search, setSearch] = useState('');
@@ -566,6 +568,70 @@ function App() {
       alert('Error al eliminar el producto del servidor.');
     }
   };
+  // Fetch orders for admin panel
+  useEffect(() => {
+    if (currentView !== 'admin-orders') return;
+    const fetchOrders = async () => {
+      setOrdersLoading(true);
+      try {
+        const res = await fetch('http://localhost:5000/api/admin/orders');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setOrders(data);
+      } catch (error) {
+        console.error('Error al obtener pedidos del servidor:', error);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    fetchOrders();
+  }, [currentView]);
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) throw new Error();
+      
+      const updatedOrder = await res.json();
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: updatedOrder.status, updated_at: updatedOrder.updated_at } : o));
+      alert('¡Estado del pedido actualizado correctamente!');
+    } catch (error) {
+      alert('Error al actualizar el estado del pedido.');
+    }
+  };
+
+  const handleExportOrdersToExcel = () => {
+    if (orders.length === 0) {
+      alert('No hay pedidos para exportar.');
+      return;
+    }
+    
+    let csvContent = "\uFEFF"; // UTF-8 BOM
+    csvContent += "ID Pedido,Fecha,Cliente,Email,Total,Estado,Notas,Vinos Detalle\n";
+    
+    orders.forEach(order => {
+      const dateStr = new Date(order.created_at).toLocaleString('es-AR');
+      const itemsStr = order.items?.map(item => `${item.product_name} (Cant: ${item.quantity}, Precio: $${item.price})`).join(' | ') || '';
+      
+      const notesClean = order.notes ? order.notes.replace(/[\n\r,]/g, ' ') : '';
+      const clientName = order.user_name ? order.user_name.replace(/,/g, ' ') : '';
+      
+      csvContent += `"${order.id}","${dateStr}","${clientName}","${order.user_email}",$${order.total},"${order.status}","${notesClean}","${itemsStr}"\n`;
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Reporte_Pedidos_VinitoyPastas_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Product Detail rendering handled inline in main shell
 
@@ -658,7 +724,10 @@ function App() {
                 <li><a href="#direcciones" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis direcciones</a></li>
                 <li><a href="#misfavoritos" onClick={(e) => { e.preventDefault(); alert('¡Próximamente!'); }}>Mis favoritos</a></li>
                 {user && user.role === 'admin' && (
-                  <li><a href="#admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); setSidebarOpen(false); }}>Panel Administración</a></li>
+                  <>
+                    <li><a href="#admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); setSidebarOpen(false); }}>Administrar Vinos</a></li>
+                    <li><a href="#admin-orders" onClick={(e) => { e.preventDefault(); setCurrentView('admin-orders'); setSidebarOpen(false); }}>Administrar Pedidos</a></li>
+                  </>
                 )}
                 {user ? (
                   <li><a href="#logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Cerrar sesión</a></li>
@@ -717,7 +786,8 @@ function App() {
                   <li><a href="#misfavoritos" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); alert('¡Próximamente!'); }}>Mis favoritos</a></li>
                   {user && user.role === 'admin' && (
                     <>
-                      <li><a href="#admin" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); setCurrentView('admin'); }}>Panel Administración</a></li>
+                      <li><a href="#admin" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); setCurrentView('admin'); }}>Administrar Vinos</a></li>
+                      <li><a href="#admin-orders" onClick={(e) => { e.preventDefault(); setProfileDropdownOpen(false); setCurrentView('admin-orders'); }}>Administrar Pedidos</a></li>
                       <div className="profile-dropdown-divider" />
                     </>
                   )}
@@ -1075,6 +1145,95 @@ function App() {
               </tbody>
             </table>
           </div>
+        </main>
+      ) : currentView === 'admin-orders' ? (
+        <main className="admin-container">
+          <div className="admin-header">
+            <h2>Panel de Control de Pedidos</h2>
+            <button className="btn-admin-add" onClick={handleExportOrdersToExcel}>
+              📥 Exportar Reporte (Excel)
+            </button>
+          </div>
+
+          {ordersLoading ? (
+            <div className="detail-loading-state">
+              <div className="loading-spinner"></div>
+              Cargando pedidos...
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="detail-empty-state">
+              <h2>No hay pedidos registrados</h2>
+              <p>Las compras realizadas se verán en este listado.</p>
+            </div>
+          ) : (
+            <div className="admin-table-wrapper">
+              <table className="admin-products-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>ID Pedido</th>
+                    <th>Cliente</th>
+                    <th>Email</th>
+                    <th>Total</th>
+                    <th>Detalles Vinos</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(order => (
+                    <tr key={order.id}>
+                      <td>{new Date(order.created_at).toLocaleDateString('es-AR')} {new Date(order.created_at).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})}</td>
+                      <td><code style={{fontSize: '0.85rem'}}>{order.id.slice(0, 8)}...</code></td>
+                      <td style={{fontWeight: 700}}>{order.user_name}</td>
+                      <td>{order.user_email}</td>
+                      <td style={{fontWeight: 700}}>${parseFloat(order.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                      <td>
+                        <ul style={{margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem', lineHeight: '1.4'}}>
+                          {order.items?.map((item, idx) => (
+                            <li key={idx}>
+                              {item.product_name} x {item.quantity} (${parseFloat(item.price).toLocaleString('es-AR')})
+                            </li>
+                          ))}
+                        </ul>
+                        {order.notes && (
+                          <div style={{marginTop: '0.4rem', fontSize: '0.8rem', color: '#7a7572', fontStyle: 'italic'}}>
+                            <strong>Nota:</strong> {order.notes}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <select 
+                          className="status-selector-dropdown"
+                          value={order.status}
+                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                          style={{
+                            padding: '0.4rem',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            border: '1px solid var(--color-border)',
+                            backgroundColor: order.status === 'delivered' ? '#d4efdf' :
+                                            order.status === 'shipped' ? '#d6eaf8' :
+                                            order.status === 'paid' ? '#fcf3cf' :
+                                            order.status === 'cancelled' ? '#f9ebd2' : '#f2f4f4',
+                            color: order.status === 'delivered' ? '#196f3d' :
+                                   order.status === 'shipped' ? '#1b4f72' :
+                                   order.status === 'paid' ? '#7d6608' :
+                                   order.status === 'cancelled' ? '#78281f' : '#5d6d7e'
+                          }}
+                        >
+                          <option value="pending">Pendiente</option>
+                          <option value="paid">Pagado</option>
+                          <option value="shipped">Enviado</option>
+                          <option value="delivered">Entregado</option>
+                          <option value="cancelled">Cancelado</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </main>
       ) : currentView === 'home' ? (
         <main className="home-container">
