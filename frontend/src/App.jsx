@@ -137,6 +137,46 @@ const MOCK_PRODUCTS = [
   }
 ];
 
+const MOCK_ORDERS = [
+  {
+    id: "b08e9994-e20a-4bf3-9c8f-1a3b8d9c0e4f",
+    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+    user_name: "Juan Pérez",
+    user_email: "juan.perez@example.com",
+    total: "12500.00",
+    status: "pending",
+    notes: "Enviar por la tarde, portero eléctrico no funciona.",
+    items: [
+      { product_name: "Rutini Malbec", quantity: 1, price: "12500.00" }
+    ]
+  },
+  {
+    id: "0797d95e-a612-4fb3-bb18-2e3b8d9c0e4f",
+    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+    user_name: "María Gómez",
+    user_email: "maria.gomez@example.com",
+    total: "34800.00",
+    status: "paid",
+    notes: null,
+    items: [
+      { product_name: "Luigi Bosca Chardonnay", quantity: 2, price: "9800.00" },
+      { product_name: "Catena Zapata Cabernet Sauvignon", quantity: 1, price: "15200.00" }
+    ]
+  },
+  {
+    id: "7a04e828-b811-4cb3-cc19-3e3b8d9c0e4f",
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+    user_name: "Administrador Test",
+    user_email: "admin@vinitoypastas.com",
+    total: "14000.00",
+    status: "shipped",
+    notes: "Frágil",
+    items: [
+      { product_name: "D.V. Catena Cabernet-Malbec", quantity: 1, price: "14000.00" }
+    ]
+  }
+];
+
 const getImageUrl = (url) => {
   if (!url) return '';
   // Images uploaded via admin go to the backend server
@@ -623,8 +663,16 @@ function App() {
         if (!res.ok) throw new Error();
         const data = await res.json();
         setOrders(data);
+        localStorage.setItem('vyp_orders', JSON.stringify(data));
       } catch (error) {
-        console.error('Error al obtener pedidos del servidor:', error);
+        console.warn('Backend offline, cargando pedidos del almacenamiento local / simulados.');
+        const savedOrders = localStorage.getItem('vyp_orders');
+        if (savedOrders) {
+          setOrders(JSON.parse(savedOrders));
+        } else {
+          setOrders(MOCK_ORDERS);
+          localStorage.setItem('vyp_orders', JSON.stringify(MOCK_ORDERS));
+        }
       } finally {
         setOrdersLoading(false);
       }
@@ -645,7 +693,11 @@ function App() {
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: updatedOrder.status, updated_at: updatedOrder.updated_at } : o));
       alert('¡Estado del pedido actualizado correctamente!');
     } catch (error) {
-      alert('Error al actualizar el estado del pedido.');
+      console.warn('Backend offline, actualizando estado de pedido localmente.');
+      const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o);
+      setOrders(updated);
+      localStorage.setItem('vyp_orders', JSON.stringify(updated));
+      alert('¡Estado del pedido actualizado localmente (Simulación GitHub Pages)!');
     }
   };
 
