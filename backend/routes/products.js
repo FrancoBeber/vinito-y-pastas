@@ -1,6 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Multer storage configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'wine-' + uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp|gif/;
+    const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mimeOk = allowed.test(file.mimetype.split('/')[1]);
+    if (extOk && mimeOk) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
+    }
+  }
+});
 
 // GET /api/products - Get all products with filters
 router.get('/products', async (req, res) => {
@@ -149,7 +185,7 @@ router.post('/products/:id/reviews', async (req, res) => {
 });
 
 // POST /api/products - Create a new product (admin only)
-router.post('/products', async (req, res) => {
+router.post('/products', upload.single('image'), async (req, res) => {
   try {
     const { name, description, price, stock, category_id, image_url, winery } = req.body;
 
@@ -157,11 +193,17 @@ router.post('/products', async (req, res) => {
       return res.status(400).json({ error: 'Por favor, completa los campos obligatorios (nombre, precio, stock, categoría)' });
     }
 
+    // Use uploaded file path if present, otherwise use provided URL
+    let finalImageUrl = image_url || null;
+    if (req.file) {
+      finalImageUrl = `/uploads/${req.file.filename}`;
+    }
+
     const { rows } = await db.query(
       `INSERT INTO products (name, description, price, stock, category_id, image_url, winery)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [name, description || null, parseFloat(price), parseInt(stock), parseInt(category_id), image_url || null, winery || null]
+      [name, description || null, parseFloat(price), parseInt(stock), parseInt(category_id), finalImageUrl, winery || null]
     );
 
     res.status(201).json(rows[0]);
@@ -172,7 +214,7 @@ router.post('/products', async (req, res) => {
 });
 
 // PUT /api/products/:id - Update a product (admin only)
-router.put('/products/:id', async (req, res) => {
+router.put('/products/:id', upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, price, stock, category_id, image_url, winery } = req.body;
@@ -181,12 +223,18 @@ router.put('/products/:id', async (req, res) => {
       return res.status(400).json({ error: 'Por favor, completa los campos obligatorios' });
     }
 
+    // Use uploaded file path if present, otherwise keep provided URL
+    let finalImageUrl = image_url || null;
+    if (req.file) {
+      finalImageUrl = `/uploads/${req.file.filename}`;
+    }
+
     const { rows } = await db.query(
       `UPDATE products 
        SET name = $1, description = $2, price = $3, stock = $4, category_id = $5, image_url = $6, winery = $7
        WHERE id = $8
        RETURNING *`,
-      [name, description || null, parseFloat(price), parseInt(stock), parseInt(category_id), image_url || null, winery || null, id]
+      [name, description || null, parseFloat(price), parseInt(stock), parseInt(category_id), finalImageUrl, winery || null, id]
     );
 
     if (rows.length === 0) {

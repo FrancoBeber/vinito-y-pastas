@@ -139,6 +139,10 @@ const MOCK_PRODUCTS = [
 
 const getImageUrl = (url) => {
   if (!url) return '';
+  // Images uploaded via admin go to the backend server
+  if (url.startsWith('/uploads')) {
+    return `http://localhost:5000${url}`;
+  }
   const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
   return `${import.meta.env.BASE_URL || '/'}${cleanUrl}`;
 };
@@ -446,18 +450,24 @@ function App() {
   const [formPrice, setFormPrice] = useState('');
   const [formStock, setFormStock] = useState('');
   const [formCategoryId, setFormCategoryId] = useState('');
-  const [formImageUrl, setFormImageUrl] = useState('');
+  const [formImageFile, setFormImageFile] = useState(null);
+  const [formImagePreview, setFormImagePreview] = useState('');
   const [formDescription, setFormDescription] = useState('');
 
   const handleOpenAdminForm = (product = null) => {
     setEditingProduct(product);
+    setFormImageFile(null);
     if (product) {
       setFormName(product.name);
       setFormWinery(product.winery || '');
       setFormPrice(product.price);
       setFormStock(product.stock);
       setFormCategoryId(product.category_id || '');
-      setFormImageUrl(product.image_url || '');
+      // Show current image as preview
+      const imgSrc = product.image_url?.startsWith('/uploads')
+        ? `http://localhost:5000${product.image_url}`
+        : getImageUrl(product.image_url);
+      setFormImagePreview(imgSrc || '');
       setFormDescription(product.description || '');
     } else {
       setFormName('');
@@ -465,39 +475,49 @@ function App() {
       setFormPrice('');
       setFormStock('');
       setFormCategoryId('');
-      setFormImageUrl('/images/cover.webp');
+      setFormImagePreview('');
       setFormDescription('');
     }
     setShowAdminForm(true);
   };
 
+  const handleImageFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormImageFile(file);
+      setFormImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleAdminFormSubmit = async (e) => {
     e.preventDefault();
-    const productData = {
-      name: formName.trim(),
-      winery: formWinery.trim(),
-      price: parseFloat(formPrice),
-      stock: parseInt(formStock),
-      category_id: parseInt(formCategoryId),
-      image_url: formImageUrl.trim(),
-      description: formDescription.trim()
-    };
+
+    const formData = new FormData();
+    formData.append('name', formName.trim());
+    formData.append('winery', formWinery.trim());
+    formData.append('price', formPrice);
+    formData.append('stock', formStock);
+    formData.append('category_id', formCategoryId);
+    formData.append('description', formDescription.trim());
+
+    if (formImageFile) {
+      formData.append('image', formImageFile);
+    } else if (editingProduct && editingProduct.image_url) {
+      // Keep existing image URL if no new file was selected
+      formData.append('image_url', editingProduct.image_url);
+    }
 
     try {
       let res;
       if (editingProduct) {
-        // Edit product
         res = await fetch(`http://localhost:5000/api/products/${editingProduct.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(productData)
+          body: formData
         });
       } else {
-        // Add new product
         res = await fetch(`http://localhost:5000/api/products`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(productData)
+          body: formData
         });
       }
 
@@ -510,7 +530,6 @@ function App() {
         const prodData = await prodRes.json();
         setProducts(prodData);
       } else {
-        // Local fallback
         if (editingProduct) {
           setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...updatedProduct } : p));
         } else {
@@ -921,6 +940,8 @@ function App() {
                         placeholder="Ej: Rutini Malbec"
                         value={formName}
                         onChange={(e) => setFormName(e.target.value)}
+                        readOnly={!!editingProduct}
+                        className={editingProduct ? 'field-readonly' : ''}
                       />
                     </div>
                     <div className="form-group">
@@ -931,6 +952,8 @@ function App() {
                         placeholder="Ej: Rutini Wines"
                         value={formWinery}
                         onChange={(e) => setFormWinery(e.target.value)}
+                        readOnly={!!editingProduct}
+                        className={editingProduct ? 'field-readonly' : ''}
                       />
                     </div>
                   </div>
@@ -974,13 +997,18 @@ function App() {
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>URL de Imagen</label>
+                      <label>Imagen del Vino</label>
                       <input 
-                        type="text" 
-                        placeholder="Ej: /images/rutini_malbec.webp"
-                        value={formImageUrl}
-                        onChange={(e) => setFormImageUrl(e.target.value)}
+                        type="file" 
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleImageFileChange}
+                        className="file-input"
                       />
+                      {formImagePreview && (
+                        <div className="image-preview-box">
+                          <img src={formImagePreview} alt="Vista previa" />
+                        </div>
+                      )}
                     </div>
                   </div>
 

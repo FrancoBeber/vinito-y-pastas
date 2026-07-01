@@ -1928,7 +1928,61 @@ body {
   border-radius: 6px;
   font-family: var(--font-sans);
   font-size: 0.95rem;
-  background-color: #fafaf8;
+  background-color: #ffffff;
+  color: #2c2c2c;
+}
+
+.admin-product-form select option {
+  background-color: #ffffff;
+  color: #2c2c2c;
+  padding: 0.5rem;
+}
+
+.admin-product-form input.field-readonly {
+  background-color: #e8e5e0;
+  color: #7a7572;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.admin-product-form .file-input {
+  padding: 0.5rem;
+  background-color: #ffffff;
+  cursor: pointer;
+}
+
+.admin-product-form .file-input::file-selector-button {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border: none;
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-right: 0.8rem;
+  transition: background-color 0.2s;
+}
+
+.admin-product-form .file-input::file-selector-button:hover {
+  background-color: var(--color-accent);
+}
+
+.image-preview-box {
+  margin-top: 0.6rem;
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  padding: 0.5rem;
+  background-color: #f9f8f6;
+  text-align: center;
+}
+
+.image-preview-box img {
+  max-height: 120px;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 4px;
 }
 
 .admin-product-form input:focus,
